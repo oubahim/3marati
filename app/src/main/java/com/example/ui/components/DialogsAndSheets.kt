@@ -227,11 +227,11 @@ fun LoginDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                DemoAccountChip("👑 الإدارة العليا (Super Admin)", "0600000000") {
-                    phoneInput = "0600000000"
+                DemoAccountChip("👑 الإدارة العليا (أنت) • oubahimtoto@gmail.com", "0600000000") {
+                    phoneInput = "oubahimtoto@gmail.com"
                     isOtpSent = true
                     otpInput = "123456"
-                    onLogin("0600000000", "واتساب")
+                    onLogin("oubahimtoto@gmail.com", "واتساب")
                 }
                 DemoAccountChip("🏢 مسؤول العمارة - باقة نشطة (رشيد)", "0611111111") {
                     phoneInput = "0611111111"
@@ -315,8 +315,8 @@ fun RoleSwitchDialog(
                 )
 
                 RoleOptionCard(
-                    title = "الإدارة العليا (أنت)",
-                    desc = "إدارة المسؤولين، الباقات، تسجيل الدفعات خارج التطبيق، والتقارير الشاملة.",
+                    title = "الإدارة العليا (أنت) • oubahimtoto@gmail.com",
+                    desc = "صلاحيات حصرية فقط: إضافة المسؤولين، وإدارة الباقات والاشتراكات والمدفوعات، والتقارير، والإيقاف والتفعيل.",
                     isSelected = currentRole == UserRole.SUPER_ADMIN,
                     icon = Icons.Default.Shield
                 ) { onRoleSelected(UserRole.SUPER_ADMIN) }

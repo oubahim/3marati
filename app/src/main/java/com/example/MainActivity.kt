@@ -154,7 +154,7 @@ fun ImartiApp(viewModel: ImartiViewModel) {
                                 )
                             }
                             Text(
-                                text = if (session.role == UserRole.SUPER_ADMIN) "لوحة تحكم المنصة والإدارة العليا" else building.name,
+                                text = if (session.role == UserRole.SUPER_ADMIN) "الإدارة العليا (أنت) • oubahimtoto@gmail.com" else building.name,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
                                 fontSize = 10.sp
@@ -192,7 +192,7 @@ fun ImartiApp(viewModel: ImartiViewModel) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = when (session.role) {
-                                    UserRole.SUPER_ADMIN -> "الإدارة العليا"
+                                    UserRole.SUPER_ADMIN -> "الإدارة العليا (أنت)"
                                     UserRole.MANAGER -> "المسؤول"
                                     UserRole.RESIDENT -> "ساكن ${session.apartmentNumber ?: ""}"
                                 },
@@ -265,46 +265,75 @@ fun ImartiApp(viewModel: ImartiViewModel) {
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp
             ) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { viewModel.selectTab(0) },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "الرئيسية") },
-                    label = { Text("الرئيسية", fontSize = 11.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { viewModel.selectTab(1) },
-                    icon = { Icon(Icons.Default.Campaign, contentDescription = "الإعلانات") },
-                    label = { Text("الإعلانات", fontSize = 11.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { viewModel.selectTab(2) },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (openComplaints > 0) {
-                                    Badge { Text("$openComplaints") }
+                if (session.role == UserRole.SUPER_ADMIN) {
+                    // Super Admin Exclusive 4 Pillars (فقط)
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { viewModel.selectTab(0) },
+                        icon = { Icon(Icons.Default.SupervisorAccount, contentDescription = "المسؤولون") },
+                        label = { Text("المسؤولون", fontSize = 11.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { viewModel.selectTab(1) },
+                        icon = { Icon(Icons.Default.CardMembership, contentDescription = "الباقات والمدفوعات") },
+                        label = { Text("الباقات والمدفوعات", fontSize = 11.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { viewModel.selectTab(2) },
+                        icon = { Icon(Icons.Default.Analytics, contentDescription = "التقارير") },
+                        label = { Text("التقارير", fontSize = 11.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 3,
+                        onClick = { viewModel.selectTab(3) },
+                        icon = { Icon(Icons.Default.PowerSettingsNew, contentDescription = "الإيقاف والتفعيل") },
+                        label = { Text("الإيقاف والتفعيل", fontSize = 11.sp, fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                } else {
+                    // Building syndic & resident tabs
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { viewModel.selectTab(0) },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "الرئيسية") },
+                        label = { Text("الرئيسية", fontSize = 11.sp, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { viewModel.selectTab(1) },
+                        icon = { Icon(Icons.Default.Campaign, contentDescription = "الإعلانات") },
+                        label = { Text("الإعلانات", fontSize = 11.sp, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { viewModel.selectTab(2) },
+                        icon = {
+                            BadgedBox(
+                                badge = {
+                                    if (openComplaints > 0) {
+                                        Badge { Text("$openComplaints") }
+                                    }
                                 }
+                            ) {
+                                Icon(Icons.Default.Build, contentDescription = "الشكاوى")
                             }
-                        ) {
-                            Icon(Icons.Default.Build, contentDescription = "الشكاوى")
-                        }
-                    },
-                    label = { Text("الشكاوى", fontSize = 11.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { viewModel.selectTab(3) },
-                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "الفواتير والمرافق") },
-                    label = { Text("الفواتير والمرافق", fontSize = 11.sp, fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal) }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 4,
-                    onClick = { viewModel.selectTab(4) },
-                    icon = { Icon(Icons.Default.People, contentDescription = "السكان والدليل") },
-                    label = { Text("السكان والدليل", fontSize = 11.sp, fontWeight = if (selectedTab == 4) FontWeight.Bold else FontWeight.Normal) }
-                )
+                        },
+                        label = { Text("الشكاوى", fontSize = 11.sp, fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 3,
+                        onClick = { viewModel.selectTab(3) },
+                        icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "الفواتير والمرافق") },
+                        label = { Text("الفواتير والمرافق", fontSize = 11.sp, fontWeight = if (selectedTab == 3) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 4,
+                        onClick = { viewModel.selectTab(4) },
+                        icon = { Icon(Icons.Default.People, contentDescription = "السكان والدليل") },
+                        label = { Text("السكان والدليل", fontSize = 11.sp, fontWeight = if (selectedTab == 4) FontWeight.Bold else FontWeight.Normal) }
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -341,12 +370,21 @@ fun ImartiApp(viewModel: ImartiViewModel) {
 
             // Screen Router
             Box(modifier = Modifier.weight(1f)) {
-                when (selectedTab) {
-                    0 -> DashboardScreen(viewModel = viewModel, onNavigateToTab = { viewModel.selectTab(it) })
-                    1 -> AnnouncementsAndWorksScreen(viewModel = viewModel)
-                    2 -> IncidentsScreen(viewModel = viewModel)
-                    3 -> FinancesScreen(viewModel = viewModel)
-                    4 -> ApartmentsScreen(viewModel = viewModel)
+                if (session.role == UserRole.SUPER_ADMIN) {
+                    SuperAdminScreen(
+                        viewModel = viewModel,
+                        activeTab = selectedTab,
+                        onTabChanged = { viewModel.selectTab(it) }
+                    )
+                } else {
+                    when (selectedTab) {
+                        0 -> DashboardScreen(viewModel = viewModel, onNavigateToTab = { viewModel.selectTab(it) })
+                        1 -> AnnouncementsAndWorksScreen(viewModel = viewModel)
+                        2 -> IncidentsScreen(viewModel = viewModel)
+                        3 -> FinancesScreen(viewModel = viewModel)
+                        4 -> ApartmentsScreen(viewModel = viewModel)
+                        else -> DashboardScreen(viewModel = viewModel, onNavigateToTab = { viewModel.selectTab(it) })
+                    }
                 }
             }
         }

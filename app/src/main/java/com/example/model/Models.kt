@@ -87,7 +87,8 @@ data class Building(
     val managerName: String,
     val managerPhone: String,
     val bankRib: String? = null,
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val suspensionReason: String? = null
 )
 
 enum class ProofStatus(val labelAr: String, val labelFr: String, val labelEn: String) {
@@ -223,6 +224,7 @@ data class AuthSession(
     val isLoggedIn: Boolean = false,
     val role: UserRole = UserRole.RESIDENT,
     val phone: String = "",
+    val email: String = "",
     val name: String = "",
     val apartmentNumber: String? = null,
     val buildingId: String = "bld-1",

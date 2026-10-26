@@ -195,9 +195,24 @@ class ImartiViewModel(
         showFeedback("تمت إضافة المسؤول والعمارة وتفعيل الحساب بنجاح!")
     }
 
-    fun toggleBuildingStatus(buildingId: String) {
-        repository.toggleBuildingStatus(buildingId)
-        showFeedback("تم تحديث حالة العمارة.")
+    fun toggleBuildingStatus(buildingId: String, reason: String? = null) {
+        repository.toggleBuildingStatus(buildingId, reason)
+        showFeedback("تم تحديث حالة العمارة بنجاح.")
+    }
+
+    fun suspendBuilding(buildingId: String, reason: String) {
+        repository.suspendBuilding(buildingId, reason)
+        showFeedback("تم إيقاف العمارة وتجميد الصلاحيات: $reason")
+    }
+
+    fun activateBuilding(buildingId: String) {
+        repository.activateBuilding(buildingId)
+        showFeedback("تم إعادة تفعيل العمارة والاشتراك بنجاح!")
+    }
+
+    fun updatePlan(plan: Plan) {
+        repository.updatePlan(plan)
+        showFeedback("تم حفظ تعديلات باقة ${plan.name} بنجاح!")
     }
 
     fun openRecordPayment(building: Building?) {

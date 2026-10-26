@@ -8,13 +8,14 @@ import java.util.UUID
 
 class ImartiRepository {
 
-    // Current Auth Session (Defaults to Super Admin for quick initial review, but can be switched via Login Screen)
+    // Current Auth Session (Defaults to Super Admin for oubahimtoto@gmail.com)
     private val _session = MutableStateFlow(
         AuthSession(
             isLoggedIn = true,
             role = UserRole.SUPER_ADMIN,
             phone = "0600000000",
-            name = "مدير المنصة (الإدارة العليا)",
+            email = "oubahimtoto@gmail.com",
+            name = "الإدارة العليا (أنت)",
             apartmentNumber = null,
             buildingId = "bld-1",
             isFirstManagerLogin = false
@@ -138,15 +139,16 @@ class ImartiRepository {
     }
 
     fun loginWithPhone(phoneInput: String): LoginResult {
-        val cleanPhone = phoneInput.trim().replace(" ", "").replace("+212", "0")
+        val cleanInput = phoneInput.trim().lowercase().replace(" ", "").replace("+212", "0")
         
-        // 1. Super Admin check
-        if (cleanPhone == "0600000000" || cleanPhone == "000000") {
+        // 1. Super Admin check (Email or Master Admin Phone)
+        if (cleanInput == "oubahimtoto@gmail.com" || cleanInput == "0600000000" || cleanInput == "000000" || cleanInput.contains("oubahimtoto")) {
             val s = AuthSession(
                 isLoggedIn = true,
                 role = UserRole.SUPER_ADMIN,
                 phone = "0600000000",
-                name = "الإدارة العليا (المنصة)",
+                email = "oubahimtoto@gmail.com",
+                name = "الإدارة العليا (أنت)",
                 buildingId = "bld-1",
                 isFirstManagerLogin = false
             )
@@ -155,7 +157,7 @@ class ImartiRepository {
         }
 
         // 2. New Manager demo check (needs onboarding/trial)
-        if (cleanPhone == "0622222222") {
+        if (cleanInput == "0622222222") {
             val s = AuthSession(
                 isLoggedIn = true,
                 role = UserRole.MANAGER,
@@ -169,14 +171,14 @@ class ImartiRepository {
         }
 
         // 3. Existing Manager check
-        val managerBuilding = _buildings.value.firstOrNull { it.managerPhone.replace(" ", "") == cleanPhone }
+        val managerBuilding = _buildings.value.firstOrNull { it.managerPhone.replace(" ", "") == cleanInput }
         if (managerBuilding != null) {
             val sub = _subscriptions.value.firstOrNull { it.buildingId == managerBuilding.id }
             val isFirstTime = sub == null
             val s = AuthSession(
                 isLoggedIn = true,
                 role = UserRole.MANAGER,
-                phone = cleanPhone,
+                phone = cleanInput,
                 name = managerBuilding.managerName,
                 buildingId = managerBuilding.id,
                 isFirstManagerLogin = isFirstTime
@@ -186,12 +188,12 @@ class ImartiRepository {
         }
 
         // 4. Resident check
-        val resident = _residents.value.firstOrNull { it.phone.replace(" ", "") == cleanPhone }
+        val resident = _residents.value.firstOrNull { it.phone.replace(" ", "") == cleanInput }
         if (resident != null) {
             val s = AuthSession(
                 isLoggedIn = true,
                 role = UserRole.RESIDENT,
-                phone = cleanPhone,
+                phone = cleanInput,
                 name = resident.name,
                 apartmentNumber = resident.apartmentNumber,
                 buildingId = "bld-1",
@@ -202,7 +204,7 @@ class ImartiRepository {
         }
 
         // Unregistered
-        return LoginResult.NotRegistered("الرقم غير مسجّل بالنظام. يُرجى التواصل مع مسؤول عمارتك لإضافتك.")
+        return LoginResult.NotRegistered("الرقم أو البريد غير مسجّل بالنظام. يُرجى التواصل مع مسؤول عمارتك لإضافتك.")
     }
 
     fun logout() {
@@ -216,7 +218,8 @@ class ImartiRepository {
                     isLoggedIn = true,
                     role = UserRole.SUPER_ADMIN,
                     phone = "0600000000",
-                    name = "الإدارة العليا (المنصة)",
+                    email = "oubahimtoto@gmail.com",
+                    name = "الإدارة العليا (أنت)",
                     buildingId = "bld-1"
                 )
             }
@@ -328,7 +331,13 @@ class ImartiRepository {
         return bldId
     }
 
-    fun toggleBuildingStatus(buildingId: String) {
+    fun updatePlan(updatedPlan: Plan) {
+        _plans.value = _plans.value.map {
+            if (it.id == updatedPlan.id) updatedPlan else it
+        }
+    }
+
+    fun toggleBuildingStatus(buildingId: String, reason: String? = null) {
         _buildings.value = _buildings.value.map { bld ->
             if (bld.id == buildingId) {
                 val newActive = !bld.isActive
@@ -338,8 +347,34 @@ class ImartiRepository {
                         sub.copy(status = if (newActive) SubscriptionStatus.ACTIVE else SubscriptionStatus.SUSPENDED)
                     } else sub
                 }
-                bld.copy(isActive = newActive)
+                bld.copy(isActive = newActive, suspensionReason = if (!newActive) (reason ?: "إيقاف إداري مؤقت") else null)
             } else bld
+        }
+    }
+
+    fun suspendBuilding(buildingId: String, reason: String = "عدم سداد الاشتراك") {
+        _buildings.value = _buildings.value.map { bld ->
+            if (bld.id == buildingId) {
+                bld.copy(isActive = false, suspensionReason = reason)
+            } else bld
+        }
+        _subscriptions.value = _subscriptions.value.map { sub ->
+            if (sub.buildingId == buildingId) {
+                sub.copy(status = SubscriptionStatus.SUSPENDED, notes = "إيقاف إداري: $reason")
+            } else sub
+        }
+    }
+
+    fun activateBuilding(buildingId: String) {
+        _buildings.value = _buildings.value.map { bld ->
+            if (bld.id == buildingId) {
+                bld.copy(isActive = true, suspensionReason = null)
+            } else bld
+        }
+        _subscriptions.value = _subscriptions.value.map { sub ->
+            if (sub.buildingId == buildingId) {
+                sub.copy(status = SubscriptionStatus.ACTIVE, notes = "تم التفعيل بنجاح من الإدارة العليا")
+            } else sub
         }
     }
 
