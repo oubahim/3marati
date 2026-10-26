@@ -20,8 +20,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import com.example.model.*
 import com.example.ui.ImartiViewModel
+import com.example.util.MoroccanRibUtil
+import com.example.util.StringsHelper
 
 @Composable
 fun FinancesScreen(viewModel: ImartiViewModel) {
@@ -140,7 +144,13 @@ fun FeatureLockedCard(title: String, desc: String, onUpgrade: () -> Unit) {
 fun BillsSection(viewModel: ImartiViewModel) {
     val bills by viewModel.bills.collectAsState()
     val session by viewModel.session.collectAsState()
+    val currentBuilding by viewModel.currentBuilding.collectAsState()
+    val isRibPromptDismissed by viewModel.isRibPromptDismissed.collectAsState()
+    val currentLang by viewModel.currentLanguage.collectAsState()
+    val clipboardManager = LocalClipboardManager.current
+
     val isResident = session.role == UserRole.RESIDENT
+    val isManager = session.role == UserRole.MANAGER || session.role == UserRole.SUPER_ADMIN
     val myApt = session.apartmentNumber ?: "01"
 
     val displayedBills = if (isResident) bills.filter { it.apartmentNumber == myApt } else bills
@@ -151,7 +161,226 @@ fun BillsSection(viewModel: ImartiViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // === 1. BANK RIB / PAYMENT METHOD BLOCK ===
+        if (isManager) {
+            // Manager perspective on RIB
+            item {
+                if (currentBuilding.bankRib != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AccountBalance, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "الحساب البنكي للعمارة (RIB)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                TextButton(onClick = { viewModel.setShowEditRib(true) }) {
+                                    Text("تعديل / حذف", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+
+                            val bankName = MoroccanRibUtil.getBankName(currentBuilding.bankRib)
+                            if (bankName != null) {
+                                Text(bankName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = MoroccanRibUtil.format(currentBuilding.bankRib),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(MoroccanRibUtil.clean(currentBuilding.bankRib)))
+                                            viewModel.showFeedback("تم نسخ رقم RIB إلى الحافظة بنجاح ✅")
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "نسخ رقم RIB", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (!isRibPromptDismissed) {
+                    // Gentle dismissible tip banner for manager
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Icon(Icons.Default.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "تنبيه لطيف: أضف حسابك البنكي",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    Text(
+                                        "أضف حسابك البنكي (RIB) ليسهل على السكان الدفع عبر التحويل البنكي مباشرة. تسجيل RIB اختياري ويمكنك تجاوزه والفوترة دونه.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f),
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(onClick = { viewModel.dismissRibPrompt() }) {
+                                    Text("تجاهل", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Button(
+                                    onClick = { viewModel.setShowEditRib(true) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                                ) {
+                                    Text("إضافة RIB الآن")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Dismissed state: compact button to add RIB if desired
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth().clickable { viewModel.setShowEditRib(true) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AccountBalance, contentDescription = null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("لم يتم تسجيل RIB للعمارة (الدفع نقداً)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                            Text("إضافة RIB", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        } else if (isResident) {
+            // Resident perspective on RIB
+            item {
+                if (currentBuilding.bankRib != null) {
+                    // Bank transfer is available!
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CreditCard, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "طريقة الدفع: تحويل بنكي (Virement Bancaire)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            val bank = MoroccanRibUtil.getBankName(currentBuilding.bankRib)
+                            if (bank != null) {
+                                Text(bank, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("رقم الحساب البنكي (RIB) المعتمد للعمارة:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = MoroccanRibUtil.format(currentBuilding.bankRib),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(MoroccanRibUtil.clean(currentBuilding.bankRib)))
+                                    viewModel.showFeedback("تم نسخ رقم RIB كاملاً إلى الحافظة بنجاح ✅")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("نسخ رقم RIB كاملاً بضغطة واحدة")
+                            }
+                        }
+                    }
+                } else {
+                    // No RIB registered: bank transfer box NOT shown!
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Payments, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("طريقة الدفع: نقداً أو حسب الاتفاق مع مسؤول العمارة", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Text("لم يتم تسجيل حساب بنكي للعمارة. يمكنك تسليم المساهمة لمسؤول العمارة ورفع صورة الوصل هنا.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         item {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = if (isResident) "واجباتي الشهرية وفواتير شقتي" else "فواتير شقق العمارة ومراجعة إثباتات الدفع",
                 style = MaterialTheme.typography.titleSmall,

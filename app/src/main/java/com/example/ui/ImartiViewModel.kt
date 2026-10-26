@@ -31,6 +31,16 @@ class ImartiViewModel(
         list.count { !it.isRead }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
+    val subscriptionProofs = repository.subscriptionProofs
+
+    // Language state: ARABIC, FRENCH, ENGLISH
+    private val _currentLanguage = MutableStateFlow(com.example.util.AppLanguage.ARABIC)
+    val currentLanguage: StateFlow<com.example.util.AppLanguage> = _currentLanguage.asStateFlow()
+
+    // Gentle tip dismissal for RIB
+    private val _isRibPromptDismissed = MutableStateFlow(false)
+    val isRibPromptDismissed: StateFlow<Boolean> = _isRibPromptDismissed.asStateFlow()
+
     // Current Navigation Tab (0: Home/Dashboard, 1: Announcements, 2: Complaints, 3: Bills/Facilities, 4: Residents/Settings)
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
@@ -54,6 +64,12 @@ class ImartiViewModel(
 
     private val _showRecordPaymentDialog = MutableStateFlow(false)
     val showRecordPaymentDialog: StateFlow<Boolean> = _showRecordPaymentDialog.asStateFlow()
+
+    private val _showUploadSubProofDialog = MutableStateFlow(false)
+    val showUploadSubProofDialog: StateFlow<Boolean> = _showUploadSubProofDialog.asStateFlow()
+
+    private val _showEditRibDialog = MutableStateFlow(false)
+    val showEditRibDialog: StateFlow<Boolean> = _showEditRibDialog.asStateFlow()
 
     private val _showAddResidentDialog = MutableStateFlow(false)
     val showAddResidentDialog: StateFlow<Boolean> = _showAddResidentDialog.asStateFlow()
@@ -327,6 +343,36 @@ class ImartiViewModel(
     ) {
         val manager = com.example.notification.ImartiNotificationManager(context)
         manager.sendComplaintUpdateNotification(complaintTitle, newStatus, note, aptNumber)
+    }
+
+    fun setShowUploadSubProof(show: Boolean) { _showUploadSubProofDialog.value = show }
+    fun setShowEditRib(show: Boolean) { _showEditRibDialog.value = show }
+    fun dismissRibPrompt() { _isRibPromptDismissed.value = true }
+
+    fun setLanguage(lang: com.example.util.AppLanguage) {
+        _currentLanguage.value = lang
+        showFeedback(when (lang) {
+            com.example.util.AppLanguage.ARABIC -> "تم تغيير لغة التطبيق إلى العربية 🇲🇦"
+            com.example.util.AppLanguage.FRENCH -> "Langue changée en Français 🇫🇷"
+            com.example.util.AppLanguage.ENGLISH -> "Language changed to English 🇬🇧"
+        })
+    }
+
+    fun uploadSubscriptionProof(amount: Double, note: String) {
+        val (ok, msg) = repository.uploadSubscriptionProof(session.value.buildingId, amount, note)
+        showFeedback(msg)
+        if (ok) _showUploadSubProofDialog.value = false
+    }
+
+    fun confirmSubscriptionProof(proofId: String, durationMonths: Int = 1) {
+        repository.confirmSubscriptionProof(proofId, durationMonths)
+        showFeedback("تم تأكيد إيصال التحويل البنكي وتفعيل الاشتراك بنجاح!")
+    }
+
+    fun updateBuildingRib(rib: String?) {
+        val (ok, msg) = repository.updateBuildingRib(session.value.buildingId, rib)
+        showFeedback(msg)
+        if (ok) _showEditRibDialog.value = false
     }
 
     fun sendTestPushNotification(context: android.content.Context) {

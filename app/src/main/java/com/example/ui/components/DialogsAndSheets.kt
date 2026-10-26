@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.*
 import com.example.ui.ImartiViewModel
+import com.example.util.AppLanguage
+import com.example.util.MoroccanRibUtil
+import com.example.util.StringsHelper
 
 @Composable
 fun LoginDialog(
@@ -1100,3 +1103,341 @@ fun BookFacilityDialog(
         }
     }
 }
+
+@Composable
+fun UploadSubscriptionProofDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (amount: Double, receiptUrl: String?, note: String?) -> Unit
+) {
+    var amountInput by remember { mutableStateOf("150") }
+    var noteInput by remember { mutableStateOf("") }
+    var hasSimulatedPhoto by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "رفع إيصال تحويل الاشتراك",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "رفع الإيصال اختياري. يمكنك رفع صورة الإشعار البنكي أو إرساله مباشرة للإدارة للتأكيد الفوري.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { amountInput = it },
+                    label = { Text("المبلغ المحول (درهم مغربي MAD)") },
+                    leadingIcon = { Icon(Icons.Default.Paid, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = noteInput,
+                    onValueChange = { noteInput = it },
+                    label = { Text("ملاحظة أو رقم مرجع العملية (اختياري)") },
+                    leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Simulated receipt upload button
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (hasSimulatedPhoto) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { hasSimulatedPhoto = !hasSimulatedPhoto }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = if (hasSimulatedPhoto) Icons.Default.CheckCircle else Icons.Default.AddPhotoAlternate,
+                            contentDescription = null,
+                            tint = if (hasSimulatedPhoto) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (hasSimulatedPhoto) "تم إرفاق صورة إيصال التحويل ✓" else "إرفاق صورة إيصال التحويل (اختياري)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("إلغاء")
+                    }
+                    Button(
+                        onClick = {
+                            val parsedAmount = amountInput.toDoubleOrNull() ?: 0.0
+                            val receipt = if (hasSimulatedPhoto) "receipt_virement_img.jpg" else null
+                            onConfirm(parsedAmount, receipt, noteInput.ifBlank { null })
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("إرسال الإيصال")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditRibDialog(
+    initialRib: String?,
+    onDismiss: () -> Unit,
+    onSave: (rib: String?) -> Unit
+) {
+    var ribInput by remember { mutableStateOf(initialRib ?: "") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val cleanDigits = MoroccanRibUtil.clean(ribInput)
+    val detectedBank = MoroccanRibUtil.getBankName(cleanDigits)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.AccountBalance, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "الحساب البنكي للعمارة (RIB)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "تسجيل RIB اختياري لتسهيل تحويلات السكان البنكية. يتكون RIB المغربي من 24 رقماً حصراً.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                )
+
+                OutlinedTextField(
+                    value = ribInput,
+                    onValueChange = {
+                        val numeric = it.filter { char -> char.isDigit() || char.isWhitespace() }
+                        ribInput = numeric
+                        errorMessage = null
+                    },
+                    label = { Text("رقم RIB (24 رقماً)") },
+                    placeholder = { Text("011 780 0000123456789012 96") },
+                    leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                    isError = errorMessage != null,
+                    supportingText = {
+                        if (errorMessage != null) {
+                            Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Text("الأرقام المُدخلة: ${cleanDigits.length} / 24")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (detectedBank != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("البنك المكتشف: $detectedBank", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                if (cleanDigits.length == 24) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "الشكل المعروض: ${MoroccanRibUtil.format(cleanDigits)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("إلغاء")
+                    }
+                    Button(
+                        onClick = {
+                            if (cleanDigits.isEmpty()) {
+                                // Empty is allowed as RIB is optional!
+                                onSave(null)
+                                return@Button
+                            }
+                            val validation = MoroccanRibUtil.validate(cleanDigits)
+                            if (validation.first) {
+                                onSave(MoroccanRibUtil.format(cleanDigits))
+                            } else {
+                                errorMessage = "رقم RIB غير صحيح، تحقق منه"
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("حفظ")
+                    }
+                }
+
+                if (initialRib != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { onSave(null) }
+                    ) {
+                        Text("حذف الحساب البنكي (جعل الدفع نقداً فقط)", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LanguageSelectionDialog(
+    currentLang: AppLanguage,
+    onDismiss: () -> Unit,
+    onSelectLanguage: (AppLanguage) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "اختيار لغة التطبيق / Langue / Language",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                AppLanguage.values().forEach { lang ->
+                    val isSelected = lang == currentLang
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onSelectLanguage(lang) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(lang.flag, fontSize = 22.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(lang.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    when (lang) {
+                                        AppLanguage.ARABIC -> "المملكة المغربية"
+                                        AppLanguage.FRENCH -> "Maroc - Français"
+                                        AppLanguage.ENGLISH -> "International English"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text("إغلاق / Fermer / Close")
+                }
+            }
+        }
+    }
+}
+

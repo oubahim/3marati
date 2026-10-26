@@ -86,8 +86,27 @@ data class Building(
     val managerId: String,
     val managerName: String,
     val managerPhone: String,
-    val bankRib: String = "011 780 0000 1234567890 12",
+    val bankRib: String? = null,
     val isActive: Boolean = true
+)
+
+enum class ProofStatus(val labelAr: String, val labelFr: String, val labelEn: String) {
+    PENDING("بانتظار التحقق", "En attente de vérification", "Pending Verification"),
+    CONFIRMED("مؤكَّدة", "Confirmée", "Confirmed"),
+    REJECTED("مرفوضة", "Rejetée", "Rejected")
+}
+
+data class SubscriptionProof(
+    val id: String,
+    val buildingId: String,
+    val buildingName: String,
+    val managerName: String,
+    val managerPhone: String,
+    val amount: Double,
+    val date: String,
+    val receiptNote: String,
+    val status: ProofStatus = ProofStatus.PENDING,
+    val confirmedAt: String? = null
 )
 
 enum class AnnouncementType(val labelAr: String) {

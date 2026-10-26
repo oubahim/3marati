@@ -151,6 +151,31 @@ fun ManagerDashboard(
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.setShowUploadSubProof(true) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("إيصال تحويل الاشتراك (اختياري)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    Text("اضغط لرفع صورة إشعار التحويل البنكي لتسريع تفعيل باقتك", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+                            }
+                            Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
             }
         }

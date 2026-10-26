@@ -476,70 +476,278 @@ fun PlansAndSubscriptionsSection(
 
 @Composable
 fun PaymentsSection(payments: List<PaymentRecord>, viewModel: ImartiViewModel) {
+    val proofs by viewModel.subscriptionProofs.collectAsState()
+    var selectedPaymentTab by remember { mutableStateOf(0) }
+    var proofStatusFilter by remember { mutableStateOf<ProofStatus?>(null) }
+
+    val pendingCount = proofs.count { it.status == ProofStatus.PENDING }
+    val filteredProofs = if (proofStatusFilter == null) proofs else proofs.filter { it.status == proofStatusFilter }
+
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.openRecordPayment(null) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.AddCard, contentDescription = "تسجيل دفعة يدوية")
+            if (selectedPaymentTab == 1) {
+                FloatingActionButton(
+                    onClick = { viewModel.openRecordPayment(null) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.AddCard, contentDescription = "تسجيل دفعة يدوية")
+                }
             }
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "سجل المدفوعات المستلمة خارج التطبيق",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    TextButton(onClick = { viewModel.openRecordPayment(null) }) {
-                        Text("+ تسجيل دفعة")
-                    }
-                }
+            // Secondary tab row: Transfer Proofs vs Payment History
+            TabRow(
+                selectedTabIndex = selectedPaymentTab,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Tab(
+                    selected = selectedPaymentTab == 0,
+                    onClick = { selectedPaymentTab = 0 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("إيصالات تحويل الاشتراكات", fontWeight = if (selectedPaymentTab == 0) FontWeight.Bold else FontWeight.Normal, fontSize = 12.sp)
+                            if (pendingCount > 0) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Badge(containerColor = MaterialTheme.colorScheme.error) {
+                                    Text("$pendingCount", color = Color.White, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    },
+                    icon = { Icon(Icons.Default.ReceiptLong, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                Tab(
+                    selected = selectedPaymentTab == 1,
+                    onClick = { selectedPaymentTab = 1 },
+                    text = { Text("سجل الدفعات المؤكدة", fontWeight = if (selectedPaymentTab == 1) FontWeight.Bold else FontWeight.Normal, fontSize = 12.sp) },
+                    icon = { Icon(Icons.Default.Paid, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
             }
 
-            items(payments) { pay ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            if (selectedPaymentTab == 0) {
+                // Subscription Proofs Tab
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFDCFCE7)),
-                            contentAlignment = Alignment.Center
+                    item {
+                        Column {
+                            Text(
+                                text = "مراجعة إيصالات تحويل الاشتراكات",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "يرفع المسؤولون إيصال التحويل البنكي (اختياري). عند التأكد من وصول المبلغ يمكنك تأكيد الدفعة وتفعيل الاشتراك بضغطة واحدة.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                            )
+
+                            // Status Filters
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = proofStatusFilter == null,
+                                    onClick = { proofStatusFilter = null },
+                                    label = { Text("الكل (${proofs.size})", fontSize = 11.sp) }
+                                )
+                                FilterChip(
+                                    selected = proofStatusFilter == ProofStatus.PENDING,
+                                    onClick = { proofStatusFilter = ProofStatus.PENDING },
+                                    label = { Text("بانتظار التحقق ($pendingCount)", fontSize = 11.sp) },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                                FilterChip(
+                                    selected = proofStatusFilter == ProofStatus.CONFIRMED,
+                                    onClick = { proofStatusFilter = ProofStatus.CONFIRMED },
+                                    label = { Text("مؤكَّدة (${proofs.count { it.status == ProofStatus.CONFIRMED }})", fontSize = 11.sp) },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (filteredProofs.isEmpty()) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "لا توجد إيصالات في هذا التصنيف حالياً.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    items(filteredProofs) { proof ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF16A34A))
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(proof.buildingName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                        Text("المسؤول: ${proof.managerName} (${proof.managerPhone})", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                    }
+
+                                    Surface(
+                                        color = if (proof.status == ProofStatus.CONFIRMED) Color(0xFFDCFCE7) else Color(0xFFFEF3C7),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = if (proof.status == ProofStatus.CONFIRMED) "مؤكَّدة ✅" else "بانتظار التحقق ⏳",
+                                            color = if (proof.status == ProofStatus.CONFIRMED) Color(0xFF16A34A) else Color(0xFFD97706),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${proof.amount.toInt()} درهم (MAD)",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text("تاريخ الرفع: ${proof.date}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Receipt, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "إشعار التحويل: ${proof.receiptNote}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                if (proof.status == ProofStatus.PENDING) {
+                                    Button(
+                                        onClick = { viewModel.confirmSubscriptionProof(proof.id) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("تأكيد استلام الدفعة وتفعيل الاشتراك")
+                                    }
+                                } else {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "تم التأكيد والتفعيل بنجاح (${proof.confirmedAt ?: proof.date})",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFF16A34A),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(pay.buildingName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text("${pay.paymentMethod} • مرجع: ${pay.reference}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                            Text("المسؤول: ${pay.managerName} • التمديد: ${pay.durationMonths} شهر", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            } else {
+                // Historical Payments List
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "سجل المدفوعات المستلمة خارج التطبيق",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            TextButton(onClick = { viewModel.openRecordPayment(null) }) {
+                                Text("+ تسجيل دفعة")
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("${pay.amount.toInt()} درهم", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            Text(pay.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    }
+
+                    items(payments) { pay ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFDCFCE7)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF16A34A))
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(pay.buildingName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                    Text("${pay.paymentMethod} • مرجع: ${pay.reference}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                    Text("المسؤول: ${pay.managerName} • التمديد: ${pay.durationMonths} شهر", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("${pay.amount.toInt()} درهم", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    Text(pay.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                }
+                            }
                         }
                     }
                 }

@@ -143,3 +143,26 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }
+
+abstract class PrintReleaseInfoTask : DefaultTask() {
+  @get:InputDirectory
+  abstract val apkDir: DirectoryProperty
+
+  @TaskAction
+  fun printApkInfo() {
+    val apk = apkDir.asFile.get().resolve("app-release.apk")
+    if (apk.exists()) {
+      println("==================================================")
+      println("Signed Release APK: ${apk.absolutePath}")
+      println("Size: ${apk.length() / (1024 * 1024)} MB")
+      println("==================================================")
+    }
+  }
+}
+
+tasks.register<PrintReleaseInfoTask>("printReleaseApkInfo") {
+  description = "Prints the location and size of the generated signed Release APK"
+  group = "build"
+  apkDir.set(layout.buildDirectory.dir("outputs/apk/release"))
+}
+

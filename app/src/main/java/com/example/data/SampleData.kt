@@ -59,7 +59,7 @@ object SampleData {
             managerId = "mgr-1",
             managerName = "رشيد المنصوري",
             managerPhone = "0611111111",
-            bankRib = "011 780 0000 1234567890 12",
+            bankRib = "011 780 0000123456789012 96",
             isActive = true
         ),
         Building(
@@ -71,7 +71,7 @@ object SampleData {
             managerId = "mgr-2",
             managerName = "حمزة الشريف",
             managerPhone = "0655555555",
-            bankRib = "022 560 0000 9876543210 34",
+            bankRib = null, // لا يوجد حساب بنكي مسجل (اختياري)
             isActive = true
         ),
         Building(
@@ -83,8 +83,35 @@ object SampleData {
             managerId = "mgr-3",
             managerName = "عمر العلمي",
             managerPhone = "0677777777",
-            bankRib = "033 110 0000 5544332211 56",
+            bankRib = null,
             isActive = true
+        )
+    )
+
+    val demoSubscriptionProofs = listOf(
+        SubscriptionProof(
+            id = "sub-proof-1",
+            buildingId = "bld-1",
+            buildingName = "إقامة الأندلس - عمارة B",
+            managerName = "رشيد المنصوري",
+            managerPhone = "0611111111",
+            amount = 299.0,
+            date = "2026-10-26",
+            receiptNote = "تم تحويل 299 درهم (باقة متوسطة) عبر تطبيق CIH رقم #VIR-883921",
+            status = ProofStatus.PENDING,
+            confirmedAt = null
+        ),
+        SubscriptionProof(
+            id = "sub-proof-2",
+            buildingId = "bld-2",
+            buildingName = "عمارة الياسمين",
+            managerName = "حمزة الشريف",
+            managerPhone = "0655555555",
+            amount = 149.0,
+            date = "2026-10-24",
+            receiptNote = "تحويل باقة أساسية 149 درهم عبر التجاري وفا بنك",
+            status = ProofStatus.CONFIRMED,
+            confirmedAt = "2026-10-24"
         )
     )
 

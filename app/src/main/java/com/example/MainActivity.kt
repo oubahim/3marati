@@ -31,6 +31,8 @@ import com.example.ui.ImartiViewModel
 import com.example.ui.components.*
 import com.example.ui.screens.*
 import com.example.ui.theme.ImartiTheme
+import com.example.util.AppLanguage
+import com.example.util.StringsHelper
 
 class MainActivity : ComponentActivity() {
 
@@ -40,8 +42,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val currentLanguage by viewModel.currentLanguage.collectAsState()
+            val layoutDir = if (currentLanguage == AppLanguage.ARABIC) LayoutDirection.Rtl else LayoutDirection.Ltr
+
             ImartiTheme {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                CompositionLocalProvider(LocalLayoutDirection provides layoutDir) {
                     ImartiApp(viewModel = viewModel)
                 }
             }
@@ -64,6 +69,11 @@ fun ImartiApp(viewModel: ImartiViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // Dialog collectors
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val showUploadSubProof by viewModel.showUploadSubProofDialog.collectAsState()
+    val showEditRib by viewModel.showEditRibDialog.collectAsState()
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
     val showLogin by viewModel.showLoginDialog.collectAsState()
     val showRoleSwitch by viewModel.showRoleSwitchDialog.collectAsState()
     val showAddManager by viewModel.showAddManagerDialog.collectAsState()
@@ -81,9 +91,13 @@ fun ImartiApp(viewModel: ImartiViewModel) {
     BackHandler(
         enabled = selectedTab != 0 || showLogin || showNotificationCenter || showRoleSwitch || showAddManager ||
                 showRecordPayment || showAddResident || showAddAnnouncement || showAddComplaint ||
+                showUploadSubProof || showEditRib || showLanguageDialog ||
                 selectedFacility != null || selectedBillForProof != null
     ) {
         when {
+            showLanguageDialog -> showLanguageDialog = false
+            showUploadSubProof -> viewModel.setShowUploadSubProof(false)
+            showEditRib -> viewModel.setShowEditRib(false)
             showLogin -> viewModel.setShowLogin(false)
             showNotificationCenter -> viewModel.setShowNotificationCenter(false)
             showRoleSwitch -> viewModel.setShowRoleSwitch(false)
@@ -213,6 +227,22 @@ fun ImartiApp(viewModel: ImartiViewModel) {
                                 contentDescription = "مركز الإشعارات والتنبيهات الفورية",
                                 tint = if (unreadNotifications > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+
+                    // Language Switcher (العربية / Français / English)
+                    IconButton(onClick = { showLanguageDialog = true }) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = currentLanguage.flag,
+                                    fontSize = 16.sp
+                                )
+                            }
                         }
                     }
 
@@ -419,6 +449,36 @@ fun ImartiApp(viewModel: ImartiViewModel) {
             onDismiss = { viewModel.setSelectedFacility(null) },
             onConfirm = { date, slot ->
                 viewModel.bookFacility(fac.id, date, slot)
+            }
+        )
+    }
+
+    if (showUploadSubProof) {
+        UploadSubscriptionProofDialog(
+            onDismiss = { viewModel.setShowUploadSubProof(false) },
+            onConfirm = { amount, _, note ->
+                viewModel.uploadSubscriptionProof(amount, note ?: "تحويل بنكي لتجديد الاشتراك")
+            }
+        )
+    }
+
+    if (showEditRib) {
+        EditRibDialog(
+            initialRib = building.bankRib,
+            onDismiss = { viewModel.setShowEditRib(false) },
+            onSave = { newRib ->
+                viewModel.updateBuildingRib(newRib)
+            }
+        )
+    }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLang = currentLanguage,
+            onDismiss = { showLanguageDialog = false },
+            onSelectLanguage = { lang ->
+                viewModel.setLanguage(lang)
+                showLanguageDialog = false
             }
         )
     }

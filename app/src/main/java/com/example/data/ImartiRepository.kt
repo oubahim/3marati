@@ -71,6 +71,10 @@ class ImartiRepository {
     private val _notifications = MutableStateFlow(SampleData.demoNotifications)
     val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
 
+    // Subscription Transfer Receipts (Uploaded by Managers)
+    private val _subscriptionProofs = MutableStateFlow(SampleData.demoSubscriptionProofs)
+    val subscriptionProofs: StateFlow<List<SubscriptionProof>> = _subscriptionProofs.asStateFlow()
+
     fun pushNotification(
         title: String,
         message: String,
@@ -382,6 +386,86 @@ class ImartiRepository {
                 )
             } else sub
         }
+    }
+
+    // Subscription Transfer Proofs (Uploaded by Manager, Verified by Super Admin)
+    fun uploadSubscriptionProof(
+        buildingId: String,
+        amount: Double,
+        receiptNote: String
+    ): Pair<Boolean, String> {
+        val building = _buildings.value.firstOrNull { it.id == buildingId } ?: getCurrentBuilding()
+        val proof = SubscriptionProof(
+            id = "sub-proof-" + UUID.randomUUID().toString().take(6),
+            buildingId = building.id,
+            buildingName = building.name,
+            managerName = building.managerName,
+            managerPhone = building.managerPhone,
+            amount = amount,
+            date = "اليوم",
+            receiptNote = receiptNote.ifBlank { "تم إرفاق إيصال التحويل البنكي للاشتراك" },
+            status = ProofStatus.PENDING
+        )
+        _subscriptionProofs.value = listOf(proof) + _subscriptionProofs.value
+
+        // Notify Super Admin in dashboard
+        pushNotification(
+            title = "📄 إيصال تحويل اشتراك جديد (بانتظار التحقق)",
+            message = "قام المسؤول ${building.managerName} (${building.name}) برفع إيصال تحويل بمبلغ $amount درهم.",
+            type = NotificationType.BILL_UPDATE,
+            targetRole = UserRole.SUPER_ADMIN,
+            relatedEntityId = proof.id
+        )
+
+        return Pair(true, "تم رفع إيصال التحويل بنجاح. ستتم مراجعته وتأكيد الاشتراك من الإدارة العليا.")
+    }
+
+    fun confirmSubscriptionProof(proofId: String, durationMonths: Int = 1) {
+        val proof = _subscriptionProofs.value.firstOrNull { it.id == proofId } ?: return
+
+        // 1. Mark proof as confirmed
+        _subscriptionProofs.value = _subscriptionProofs.value.map {
+            if (it.id == proofId) it.copy(status = ProofStatus.CONFIRMED, confirmedAt = "اليوم") else it
+        }
+
+        // 2. Automatically record offline payment and renew subscription!
+        recordPayment(
+            buildingId = proof.buildingId,
+            amount = proof.amount,
+            method = "تحويل بنكي (إيصال مؤكد)",
+            durationMonths = durationMonths,
+            reference = "VIR-APP-${proof.id.takeLast(5)}"
+        )
+
+        // 3. Notify the building manager
+        pushNotification(
+            title = "✅ تم تأكيد دفعة اشتراككم وتفعيل الحساب",
+            message = "تم التحقق من إيصال التحويل البنكي وتفعيل اشتراك ${proof.buildingName} لمدة $durationMonths شهر.",
+            type = NotificationType.BILL_UPDATE,
+            targetRole = UserRole.MANAGER
+        )
+    }
+
+    // Manager RIB (Optional & Validated)
+    fun updateBuildingRib(buildingId: String, rib: String?): Pair<Boolean, String> {
+        if (rib.isNullOrBlank()) {
+            _buildings.value = _buildings.value.map {
+                if (it.id == buildingId) it.copy(bankRib = null) else it
+            }
+            return Pair(true, "تم إلغاء الحساب البنكي للعمارة. سيتم إخفاء التحويل البنكي في فواتير السكان.")
+        }
+
+        val (isValid, message) = com.example.util.MoroccanRibUtil.validate(rib)
+        if (!isValid) {
+            return Pair(false, message)
+        }
+
+        val formatted = com.example.util.MoroccanRibUtil.format(rib)
+        _buildings.value = _buildings.value.map {
+            if (it.id == buildingId) it.copy(bankRib = formatted) else it
+        }
+        val bankName = com.example.util.MoroccanRibUtil.getBankName(rib) ?: "بنك مغربي معتمد"
+        return Pair(true, "تم تسجيل وتأكيد رقم RIB بنجاح ($bankName)")
     }
 
     fun savePlan(plan: Plan) {
