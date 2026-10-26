@@ -1,0 +1,8 @@
+{
+  "name": "Imarti",
+  "description": "منصة تدبير العمارة السكنية والسنديك بالمغرب - الإدارة العليا، مسؤولو العمارات، السكان، الباقات الشهرية والتجربة المجانية، الإعلانات، الشكاوى، الفواتير، وحجز المرافق والتصويت",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
